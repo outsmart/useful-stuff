@@ -1,0 +1,53 @@
+/*
+ * A simple filter to disable a user-specified payment gateway when a product with a user-specified category is added to the shopping cart
+ *  - Note:  If multiple products are added and only one has a matching category, it will remove the payment gateway
+ * Requires:
+ *    payment_NAME : One of the five hardcoded Woocommerce standard types of payment gateways - paypal, cod, bacs, cheque or mijireh_checkout
+ *    category_ID :   The ID of the category for which the gateway above will be removed.  Get the ID by clicking on the category under Products -> Categories and reading the "tag_ID" in the address bar
+ *                             i.e. http://ubuntu.humble.lan/wp-admin/edit-tags.php?action=edit&taxonomy=product_cat&tag_ID=20&post_type=product <-- the tag_ID is 20
+ * Coded by sean _ at _ techonfoot.com
+ * Thanks to boxoft - http://stackoverflow.com/questions/15303031/woocommerce-get-category-for-product-page
+ * Usual free code disclaimer - use at your own risk
+ * This code was tested against Woocommerce 2.1.12  and WordPress 3.9.1 
+ */
+function get_parent_terms($term) {
+	    if ($term->parent > 0){
+	        $term = get_term_by("id", $term->parent, "product_cat");
+	        return get_parent_terms($term);
+	    }else{
+	        return $term->term_id;
+	    }
+	}
+
+function filter_gateways($gateways){
+
+	
+
+$payment_NAME = 'eway_payments'; // <--------------- change this
+$category_ID = ['13','15','14'];  // <----------- and this
+
+ global $woocommerce;
+
+ foreach ($woocommerce->cart->cart_contents as $key => $values ) {
+    // Get the terms, i.e. category list using the ID of the product
+    $terms = get_the_terms( $values['product_id'], 'product_cat' );
+
+    // Because a product can have multiple categories, we need to iterate through the list of the products category for a match
+    foreach ($terms as $term) {
+		$product_cat_id = get_parent_terms($term);
+        // 20 is the ID of the category for which we want to remove the payment gateway
+        echo '<script type="text/javascript">console.log("The term id is" +' . $product_cat_id .');</script>';
+        if(in_array( $product_cat_id, $category_ID)){
+               unset($gateways[$payment_NAME]);
+                   // If you want to remove another payment gateway, add it here i.e. unset($gateways['cod']);
+                    break;
+          } 
+        break;
+    }
+
+   }
+    return $gateways;
+
+}
+
+add_filter('woocommerce_available_payment_gateways', __NAMESPACE__ . '\\filter_gateways');
